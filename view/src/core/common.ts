@@ -11,12 +11,18 @@ export interface ElfState {
   interpreter: string,
   elfHeader: elf.ElfHeader,
   programHeaders: elf.ProgramHeader[],
-  sectionHeaders: elf.SectionHeader[]
+  sectionHeaders: elf.SectionHeader[],
+  selectedSectionIndex: number
 }
 
 export function setStatePartial(partial: Partial<ElfState>): void {
-  const current = (vscode.getState() as ElfState) || { program: '', size: 0, interpreter: '', elfHeader: {} as elf.ElfHeader, programHeaders: [] as elf.ProgramHeader[], sectionHeaders: [] as elf.SectionHeader[] };
+  const current = (vscode.getState() as ElfState) || { program: '', size: 0, interpreter: '', elfHeader: {} as elf.ElfHeader, programHeaders: [] as elf.ProgramHeader[], sectionHeaders: [] as elf.SectionHeader[], selectedSectionIndex: 0 };
   vscode.setState({ ...current, ...partial } as ElfState);
+}
+
+export function setSelectedSectionIndex(index: number): void {
+  const current = (vscode.getState() as ElfState) || { program: '', size: 0, interpreter: '', elfHeader: {} as elf.ElfHeader, programHeaders: [] as elf.ProgramHeader[], sectionHeaders: [] as elf.SectionHeader[], selectedSectionIndex: 0 };
+  vscode.setState({ ...current, selectedSectionIndex: index } as ElfState);
 }
 
 type MessageCallback = (message: any) => void;

@@ -7,7 +7,14 @@ const responseHandler = new common.ResposeHandler();
 
 // Create the context with default null data
 export const ElfStateContext = createContext<common.ElfState>({
-  program: '', size: 0, interpreter: '', elfHeader: {} as elf.ElfHeader, programHeaders: [] as elf.ProgramHeader[], sectionHeaders: [] as elf.SectionHeader[]
+  program: '', size: 0, interpreter: '', elfHeader: {} as elf.ElfHeader, programHeaders: [] as elf.ProgramHeader[], sectionHeaders: [] as elf.SectionHeader[], selectedSectionIndex: 0
+});
+
+// Create action context for state updates
+export const ElfActionContext = createContext<{
+  updateSelectedSectionIndex: (index: number) => void;
+}>({
+  updateSelectedSectionIndex: () => {},
 });
 
 
@@ -18,8 +25,15 @@ interface DataProviderProps {
 
 export const ElfStateProvider = ({ children }: DataProviderProps) => {
   const [state, setElfState] = useState<common.ElfState>({
-    program: '', size: 0, interpreter: '', elfHeader: {} as elf.ElfHeader, programHeaders: [] as elf.ProgramHeader[], sectionHeaders: [] as elf.SectionHeader[]
+    program: '', size: 0, interpreter: '', elfHeader: {} as elf.ElfHeader, programHeaders: [] as elf.ProgramHeader[], sectionHeaders: [] as elf.SectionHeader[], selectedSectionIndex: 0
   });
+
+  const updateSelectedSectionIndex = (index: number) => {
+    setElfState((prevState) => ({
+      ...prevState,
+      selectedSectionIndex: index
+    }));
+  };
 
   useEffect(() => {
     // Add event listener for received messages
@@ -71,7 +85,13 @@ export const ElfStateProvider = ({ children }: DataProviderProps) => {
     };
   }, []);
 
-  return <ElfStateContext.Provider value={state}>{children}</ElfStateContext.Provider>;
+  return (
+    <ElfStateContext.Provider value={state}>
+      <ElfActionContext.Provider value={{ updateSelectedSectionIndex }}>
+        {children}
+      </ElfActionContext.Provider>
+    </ElfStateContext.Provider>
+  );
 };
 
 

@@ -1,6 +1,7 @@
 import React, { useContext, useState, useEffect } from "react";
-import { ElfStateContext } from '../context';
+import { ElfStateContext, ElfActionContext } from '../context';
 import * as def from '../../core/define';
+import * as common from '../../core/common';
 
 interface FileArea {
   name: string;
@@ -96,6 +97,7 @@ const getColorForArea = (index: number, name: string): string => {
 
 const StackedBoxes = () => {
   const elfState = useContext(ElfStateContext);
+  const { updateSelectedSectionIndex } = useContext(ElfActionContext);
   const [viewportHeight, setViewportHeight] = useState(0);
 
   useEffect(() => {
@@ -113,6 +115,14 @@ const StackedBoxes = () => {
 
   const handleClick = (boxIndex: number) => {
     setClickedBox(boxIndex);
+    // Find the section header index for this file area
+    const area = fileAreas[boxIndex];
+    if (elfState?.sectionHeaders) {
+      const sectionIndex = elfState.sectionHeaders.findIndex(s => s.Name === area.name);
+      if (sectionIndex >= 0) {
+        updateSelectedSectionIndex(sectionIndex);
+      }
+    }
     console.log(`Box ${boxIndex} clicked: ${fileAreas[boxIndex].name}`);
   };
 
@@ -121,8 +131,9 @@ const StackedBoxes = () => {
       style={{
         display: 'flex',
         flexDirection: 'column',
-        height: viewportHeight,
-        margin: '20px',
+        height: viewportHeight - 140, // Subtract header and title space
+        margin: '10px',
+        flex: 1,
       }}
     >
       {/* Header */}
@@ -220,18 +231,37 @@ const StackedBoxes = () => {
 
 export function FileStructure() {
   const state = useContext(ElfStateContext);
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const [viewportWidth, setViewportWidth] = useState(0);
+
+  useEffect(() => {
+    const updateDimensions = () => {
+      setViewportHeight(window.innerHeight);
+      setViewportWidth(window.innerWidth);
+    };
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    return () => window.removeEventListener('resize', updateDimensions);
+  }, []);
+
   if (!state || !state.program)
     return (
       <h1> Program : Loading </h1>
     )
 
   return (
-    <>
-      <h1>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        width: viewportWidth / 4,
+        height: viewportHeight - 80, // Account for header height
+      }}
+    >
+      <h1 style={{ margin: '10px 20px', fontSize: '18px' }}>
         Program : {state.program}
       </h1>
       <StackedBoxes />
-    </>
-
+    </div>
   )
 }

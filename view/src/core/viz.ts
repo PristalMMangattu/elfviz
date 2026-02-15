@@ -41,7 +41,7 @@ function fillVoidsInElf(info: def.FileArea[]): def.FileArea[] {
 function elfStructureInfo(vscode: any): def.FileArea[] {
   // Generating info from elf header.
   let info: def.FileArea[] = [];
-  const state = vscode.getState() as common.State;
+  const state = vscode.getState() as common.ElfState;
   if (!state) {
     throw new Error("Couldnt get state.");
   }

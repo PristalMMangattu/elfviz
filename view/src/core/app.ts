@@ -20,13 +20,13 @@ export function initialize() {
   responseHandler.registerHandler("init", (data: string) => {
     try {
       console.log(`Program : ${data}`);
-      let state: common.State = {} as common.State;
+      let state: common.ElfState = {} as common.ElfState;
       state.program = data;
-      common.setStatePartial(vscode, state);
+      common.setStatePartial(state);
       const currentState = vscode.getState();
       console.log('State in initialize:', currentState);
       elf.getElf(vscode, data, responseHandler);
-      common.getFileSize(vscode, data, responseHandler);
+      common.getFileSize(data, responseHandler);
     } catch (error) {
       console.error('Error in init handler:', error);
       console.error('Stack:', (error as Error).stack);

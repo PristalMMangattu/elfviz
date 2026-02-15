@@ -1,7 +1,11 @@
 import * as intf from '../../../intf/interface';
 import * as elf from './elf';
+// Declare the acquireVsCodeApi function.
+declare function acquireVsCodeApi(): any;
 
-export interface State {
+export const vscode = acquireVsCodeApi();
+
+export interface ElfState {
   program: string,
   size: number,
   interpreter: string,
@@ -10,9 +14,9 @@ export interface State {
   sectionHeaders: elf.SectionHeader[]
 }
 
-export function setStatePartial(vscode: any, partial: Partial<State>): void {
-  const current = (vscode.getState() as State) || { program: '', size: 0, interpreter: '', elfHeader: {} as elf.ElfHeader, programHeaders: [] as elf.ProgramHeader[], sectionHeaders: [] as elf.SectionHeader[] };
-  vscode.setState({ ...current, ...partial } as State);
+export function setStatePartial(partial: Partial<ElfState>): void {
+  const current = (vscode.getState() as ElfState) || { program: '', size: 0, interpreter: '', elfHeader: {} as elf.ElfHeader, programHeaders: [] as elf.ProgramHeader[], sectionHeaders: [] as elf.SectionHeader[] };
+  vscode.setState({ ...current, ...partial } as ElfState);
 }
 
 type MessageCallback = (message: any) => void;
@@ -45,7 +49,7 @@ export class ResposeHandler {
 }
 
 // This function sends section header info for populating activity bar
-export function sendSectionHeaderToWebview(vscode: any, data: elf.SectionHeader[]) {
+export function sendSectionHeaderToWebview(data: elf.SectionHeader[]) {
   const headers = data.map(obj => obj.Name);
   const activity = {
     header: intf.HeaderType.SECT,
@@ -62,7 +66,7 @@ export function sendSectionHeaderToWebview(vscode: any, data: elf.SectionHeader[
 }
 
 // This function sends section header info for populating activity bar
-export function sendProgramHeaderToWebview(vscode: any, data: elf.ProgramHeader[]) {
+export function sendProgramHeaderToWebview(data: elf.ProgramHeader[]) {
   const headers = data.map(obj => obj.Type);
   const activity = {
     header: intf.HeaderType.PROG,
@@ -78,7 +82,7 @@ export function sendProgramHeaderToWebview(vscode: any, data: elf.ProgramHeader[
   vscode.postMessage(msg);
 }
 
-function wcResponseHandler(data: intf.Result, vscode: any) {
+function wcResponseHandler(data: intf.Result) {
   if (data.exitCode) {
     console.log(`'wc -c <prog>', exit code is ${data.exitCode} (non-zero)`);
     return;
@@ -100,16 +104,16 @@ function wcResponseHandler(data: intf.Result, vscode: any) {
   const size = parseInt(sizeMatch, 10);
   console.log(`Size of ${matches[2]} is ${matches[1]}`);
   // Update state with size information. 
-  let state: State = {} as State;
+  let state: ElfState = {} as ElfState;
   state.size = size;
-  setStatePartial(vscode, state);
-  console.log('State in wcResponseHandler:', vscode.getState());
+  setStatePartial(state);
+  console.log('ElfState in wcResponseHandler:', vscode.getState());
 }
 
-export function getFileSize(vscode: any, program: string, handler: ResposeHandler) {
+export function getFileSize(program: string, handler: ResposeHandler) {
   // Sends 'wc -c <file>' command to get the filesSize 
   console.log('getFileSize called.');
-  handler.registerHandler("wc", (d) => wcResponseHandler(d, vscode));
+  handler.registerHandler("wc", (d) => wcResponseHandler(d));
   vscode.postMessage({
     id: "wc",
     type: intf.RequestType.EXECUTE,

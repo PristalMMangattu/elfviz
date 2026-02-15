@@ -140,8 +140,8 @@ export interface Elf {
 //******ELF Header Related*******// 
 
 // Post command for getting elf header and setup up callback to be called on receiving the response.
-function getElfHeader(vscode: any, program: string, handle: common.ResposeHandler) {
-  handle.registerHandler("eheader", (d) => elfHeaderParser(d, vscode))
+function getElfHeader(setElfState: any, vscode: any, program: string, handle: common.ResposeHandler) {
+  handle.registerHandler("eheader", (d) => elfHeaderParser(d, vscode, setElfState))
   vscode.postMessage({
     id: "eheader",
     type: intf.RequestType.EXECUTE,
@@ -182,7 +182,7 @@ const ELF_HEADER_FIELD_PATTERNS: Array<{ regex: RegExp, field: keyof ElfHeader, 
   { regex: /Section header string table index:\s+(\d+)/, field: 'SHStringTableIdx', parser: (m) => parseInt(m[1]!) }
 ];
 
-function elfHeaderParser(data: intf.Result, vscode: any) {
+function elfHeaderParser(data: intf.Result, vscode: any, setElfState: any) {
   if (data.exitCode) {
     console.log(`'readelf -h <prog>', exit code is ${data.exitCode} (non-zero)`);
   }
@@ -205,17 +205,21 @@ function elfHeaderParser(data: intf.Result, vscode: any) {
   }
 
   const elfHeader = result as ElfHeader;
-  let state: common.State = {} as common.State;
+  let state: common.ElfState = {} as common.ElfState;
   state.elfHeader = elfHeader;
-  common.setStatePartial(vscode, state);
-  console.log('State in elfHeaderParser:', vscode.getState());
+  common.setStatePartial(state);
+  console.log('ElfState in elfHeaderParser:', vscode.getState());
+  setElfState((prevState: common.ElfState) => ({
+    ...prevState,
+    elfHeader: elfHeader
+  } as common.ElfState));
 }
 
 //******Program Header Related*******// 
 
 // Post command for getting program headers and setup callback
-function getProgramHeaders(vscode: any, program: string, handle: common.ResposeHandler) {
-  handle.registerHandler("pheaders", (d) => programHeaderParser(d, vscode));
+function getProgramHeaders(setElfState: any, vscode: any, program: string, handle: common.ResposeHandler) {
+  handle.registerHandler("pheaders", (d) => programHeaderParser(d, vscode, setElfState));
   vscode.postMessage({
     id: "pheaders",
     type: intf.RequestType.EXECUTE,
@@ -229,7 +233,7 @@ function getProgramHeaders(vscode: any, program: string, handle: common.ResposeH
 const PROGRAM_HEADER_LINE_REGEX = /^\s*([A-Z_]+)\s+(0x[0-9a-f]+)\s+(0x[0-9a-f]+)\s+(0x[0-9a-f]+)\s+(0x[0-9a-f]+)\s+(0x[0-9a-f]+)\s+([REW ]+)\s+(0x[0-9a-f]+)\s*$/i;
 const SECTION_SEGMENT_MAP_REGEX = /^\s*(\d+)\s*(.*)/i
 
-function programHeaderParser(data: intf.Result, vscode: any) {
+function programHeaderParser(data: intf.Result, vscode: any, setElfState: any) {
   if (data.exitCode) {
     console.log(`'readelf -lW <prog>', exit code is ${data.exitCode} (non-zero)`);
     return;
@@ -264,10 +268,10 @@ function programHeaderParser(data: intf.Result, vscode: any) {
       if (!interpreterMatch) continue;
 
       // Update state with program headers
-      let state: common.State = {} as common.State;
+      let state: common.ElfState = {} as common.ElfState;
       state.interpreter = interpreterMatch[1];
       console.log(`Interpreter : ${state.interpreter}`);
-      common.setStatePartial(vscode, state);
+      common.setStatePartial(state);
       continue;
     }
 
@@ -354,20 +358,25 @@ function programHeaderParser(data: intf.Result, vscode: any) {
   console.log(`Parsed ${programHeaders.length} program headers`);
 
   // Update state with program headers
-  let state: common.State = {} as common.State;
+  let state: common.ElfState = {} as common.ElfState;
   state.programHeaders = programHeaders;
-  common.setStatePartial(vscode, state);
-  common.sendProgramHeaderToWebview(vscode, programHeaders);
+  common.setStatePartial(state);
+  common.sendProgramHeaderToWebview(programHeaders);
 
-  console.log(`State updated with ${programHeaders.length} program headers`);
-  console.log('State in programHeaderParser:', vscode.getState());
+  console.log(`ElfState updated with ${programHeaders.length} program headers`);
+  console.log('ElfState in programHeaderParser:', vscode.getState());
+  setElfState((prevState: common.ElfState) => ({
+    ...prevState,
+    programHeaders: programHeaders
+  } as common.ElfState));
+  
 }
 
 
 //******Segment Header Related*******// 
 // Post command for getting section headers and setup callback
-function getSectionHeaders(vscode: any, program: string, handle: common.ResposeHandler) {
-  handle.registerHandler("sheaders", (d) => sectionHeaderParser(d, vscode));
+function getSectionHeaders(setElfState: any, vscode: any, program: string, handle: common.ResposeHandler) {
+  handle.registerHandler("sheaders", (d) => sectionHeaderParser(d, vscode, setElfState));
   vscode.postMessage({
     id: "sheaders",
     type: intf.RequestType.EXECUTE,
@@ -382,7 +391,7 @@ type SectionHeaderParser = (match: RegExpMatchArray) => Partial<SectionHeader>;
 
 const SECTION_HEADER_LINE_REGEX = /^\s*\[\s*(\d+)\]\s+(\S+)?\s+(\S+)\s+([0-9a-f]+)\s+([0-9a-f]+)\s+([0-9a-f]+)\s+([0-9a-f]+)\s+([WAXEMISILO]*)\s+(\d+)\s+(\d+)\s+(\d+)\s*$/i;
 
-function sectionHeaderParser(data: intf.Result, vscode: any) {
+function sectionHeaderParser(data: intf.Result, vscode: any, setElfState: any) {
   if (data.exitCode) {
     console.log(`'readelf -SW <prog>', exit code is ${data.exitCode} (non-zero)`);
     return;
@@ -459,20 +468,22 @@ function sectionHeaderParser(data: intf.Result, vscode: any) {
   console.log(`Parsed ${sectionHeaders.length} section headers`);
 
   // Update state with section headers
-  let state: common.State = {} as common.State;
+  let state: common.ElfState = {} as common.ElfState;
   state.sectionHeaders = sectionHeaders;
-  common.setStatePartial(vscode, state);
-  common.sendSectionHeaderToWebview(vscode, sectionHeaders);
+  common.setStatePartial(state);
+  common.sendSectionHeaderToWebview(sectionHeaders);
 
-  console.log(`State updated with ${sectionHeaders.length} section headers`);
-  console.log('State in sectionHeaderParser:', vscode.getState());
+  setElfState((prevState: common.ElfState) => ({
+    ...prevState,
+    sectionHeaders: sectionHeaders
+  } as common.ElfState));
 }
 
 //****** Public API*******// 
-export function getElf(vscode: any, program: string, handle: common.ResposeHandler) {
+export function getElf(setElfState: any, program: string, handle: common.ResposeHandler) {
   console.log("getElf is called");
-  getElfHeader(vscode, program, handle);
-  getProgramHeaders(vscode, program, handle);
-  getSectionHeaders(vscode, program, handle);
+  getElfHeader(setElfState, common.vscode, program, handle);
+  getProgramHeaders(setElfState, common.vscode, program, handle);
+  getSectionHeaders(setElfState, common.vscode, program, handle);
 }
 

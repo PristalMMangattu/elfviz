@@ -1,25 +1,14 @@
-import React, { createContext, useEffect, useState, ReactNode, use } from "react";
+import React, { createContext, useEffect, useState } from "react";
 import * as intf from '../../../intf/interface';
 import * as elf from '../core/elf';
 import * as common from '../core/common'
-// Declare the acquireVsCodeApi function.
-declare function acquireVsCodeApi(): any;
-
-const vscode = acquireVsCodeApi();
-
-export interface ElfState {
-  program: string,
-  size: number,
-  interpreter: string,
-  elfHeader: elf.ElfHeader,
-  programHeaders: elf.ProgramHeader[],
-  sectionHeaders: elf.SectionHeader[]
-}
 
 const responseHandler = new common.ResposeHandler();
 
 // Create the context with default null data
-export const ElfStateContext = createContext<ElfState | null>(null);
+export const ElfStateContext = createContext<common.ElfState>({
+  program: '', size: 0, interpreter: '', elfHeader: {} as elf.ElfHeader, programHeaders: [] as elf.ProgramHeader[], sectionHeaders: [] as elf.SectionHeader[]
+});
 
 
 interface DataProviderProps {
@@ -28,7 +17,9 @@ interface DataProviderProps {
 }
 
 export const ElfStateProvider = ({ children }: DataProviderProps) => {
-  const [state, setElfState] = useState<ElfState | null>(null);
+  const [state, setElfState] = useState<common.ElfState>({
+    program: '', size: 0, interpreter: '', elfHeader: {} as elf.ElfHeader, programHeaders: [] as elf.ProgramHeader[], sectionHeaders: [] as elf.SectionHeader[]
+  });
 
   useEffect(() => {
     // Add event listener for received messages
@@ -39,23 +30,32 @@ export const ElfStateProvider = ({ children }: DataProviderProps) => {
 
     window.addEventListener('message', messageEventListener);
 
+
     // Send init message.
     responseHandler.registerHandler("init", (data: string) => {
       try {
         console.log(`Program : ${data}`);
-        let state: common.State = {} as common.State;
+        let state: common.ElfState = {} as common.ElfState;
         state.program = data;
-        common.setStatePartial(vscode, state);
-        const currentState = vscode.getState();
-        setElfState(state)
-        console.log('State in initialize:', currentState);
-        elf.getElf(vscode, data, responseHandler);
-        common.getFileSize(vscode, data, responseHandler);
+        common.setStatePartial(state);
+        const currentState = common.vscode.getState();
+
+         // Update state correctly using the previous state as a base
+        setElfState(prevState => ({
+          ...prevState,       // Keep existing headers/size/etc.
+          program: data       // Update only the program name
+        }));
+        console.log('ElfState in initialize:', currentState);
+
+
+        elf.getElf(setElfState, data, responseHandler);
+        common.getFileSize(data, responseHandler);
       } catch (error) {
         console.error('Error in init handler:', error);
         console.error('Stack:', (error as Error).stack);
       }
     });
+
 
     const msg = {
       id: "init",
@@ -63,7 +63,7 @@ export const ElfStateProvider = ({ children }: DataProviderProps) => {
       data: ""
     } as intf.Request;
 
-    vscode.postMessage(msg);
+    common.vscode.postMessage(msg);
 
     // Cleanup listener on unmount
     return () => {

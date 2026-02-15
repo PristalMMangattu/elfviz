@@ -2,7 +2,7 @@
   "name": "elfviz",
   "displayName": "elfviz",
   "description": "Helps Visualize an Executable/Libraries on a Binary level.",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "publisher": "PristalMMangattu",
   "repository": {
     "url": "https://github.com/PristalMMangattu/execview.git"

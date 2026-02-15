@@ -1,5 +1,7 @@
 # elfviz
 
+![ELFViz Icon](media/icon2.png)
+
 A VS Code extension that provides an intuitive visualization of ELF (Executable and Linkable Format) binary files. Explore the structure, layout, and detailed attributes of ELF binaries directly within VS Code.
 
 ## Features
@@ -47,7 +49,7 @@ This extension contributes the following settings:
 
 ## Release Notes
 
-### 1.0.0
+### 0.0.5
 
 Initial release of ELFViz with core features:
 - ELF binary file structure visualization with color-coded sections
